@@ -75,14 +75,14 @@ def medium_ai(m): # m = current_matrix
 def iterate(matrix,turns,player_turn):
     turns += 1
     if player_turn == 1: # Player 1 is badai
-        chosen = good_ai(matrix)              # Replace function name with your ai function name.
+        chosen = good_ai(matrix,weight_1[0])              # Replace function name with your ai function name.
         matrix = addpiece(matrix, player_turn, chosen)
         print('\n----------- Turn ' + str(turns) + '-----------')
         print('Computer Turn: Picked Column ' + str(chosen))
         print(matrix)
         player_turn = 2
     else: # Player 2 is goodai
-        chosen = good_ai(matrix) # int(input('What column would you like to add to? '))
+        chosen = good_ai(matrix, weight_2[2]) # int(input('What column would you like to add to? '))
         matrix = addpiece(matrix, player_turn, chosen)
         print('\n----------- Turn ' + str(turns) + '-----------')
         print('Player Turn: Picked Column ' + str(chosen))
@@ -96,7 +96,16 @@ def iterate(matrix,turns,player_turn):
         return matrix, turns, player_turn
 
 
+#%% Define custom m matrix
 
+m = np.array([[2, 0, 1, 1, 1, 0, 0],
+              [1, 0, 2, 2, 2, 0, 0],
+                [2, 0, 2, 1, 1, 0, 0],
+                [2, 0, 2, 1, 2, 0, 0],
+                [1, 1, 1, 2, 1, 0, 2],
+                [1, 2, 1, 1, 2, 2, 1]])
+                
+                
 #%% Iterate the game forward by running this several times
 m, turns, player_turn = iterate(m,turns,player_turn) 
 
@@ -230,7 +239,7 @@ def valid_moves(m):
 
 #%% Define good ai
 
-def good_ai(m): # m = current_matrix
+def good_ai(m, weight): # m = current_matrix
     # Assumes player 1 goes first, then player 2
 
     if np.sum(np.ravel(m) != 0) == 0: # i.e. you are going first
@@ -265,12 +274,13 @@ def good_ai(m): # m = current_matrix
         if mode == 2:
         
             ######## Region code #######   
-        
+            region1 = -999*np.ones((7,69), int) # Store results of my first move
             region2 = -999*np.ones((7,7,69), int) # -999 = invalid column
     #        region4 = np.zeros((7,7,7,7,69))
             for i in np.where(valid_columns)[0]: # Skip full columns (0)
                 mm = addpiece(m, 2, i) # Player 2 (me) goes in column i
                 valid_columns_2[i,:] = valid_moves(mm)
+                region1[i,:] = check_region(mm)
                 for j in np.where(valid_columns_2[i,:])[0]:
                     mmm = addpiece(mm, 1, j) # Player 1 (Opponent) goes in column j
                     region2[i,j,:] = check_region(mmm)
@@ -284,10 +294,25 @@ def good_ai(m): # m = current_matrix
             ######## Evaluate choice #######
     
             # Identify winning move(s)
-            win_possible = np.sum(region2 == 4) != 0
-            lose_possible = np.sum(region2 == -4) != 0
-            np.where(region2 == -4) # Continue this code!!!!
-            ###### Need to finish this here ######
+            win_column = np.zeros(7)
+            for i in range(7):
+                win_column[i] = np.sum(region1[i,:] == 4) != 0
+            
+#            win_column = np.array([0,0,0,1,0,0,0],int) # Test case
+            if np.sum(win_column) != 0:
+                c = np.where(win_column)[0][0]
+                return c
+                
+#            win_possible = np.sum(region2 == 4) != 0
+#            lose_possible = np.sum(region2 == -4) != 0
+#            np.where(region2 == -4) # Continue this code!!!!
+#
+#            if win_possible == True:
+#                c = win_column
+#            elif lose_possible == True:
+#                c = lose_column # ??? Need to block it
+#
+#            ###### Need to finish this here (above) ######
     
             melt_r2 = np.zeros([49,3+69], int)
             analysis = np.zeros([49,10], int)
@@ -312,9 +337,17 @@ def good_ai(m): # m = current_matrix
                     analysis[idx,9] = sum(region2[i,j,:] == 4)        
             
                     # Experiment with these weightings - may be different depending on if you go first or not (more aggressive pays off if first)
-                    temp = -1000*analysis[idx,1] + -100*analysis[idx,2] + -10*analysis[idx,3] * -1*analysis[idx,4]
-                    temp += 1*analysis[idx,6] + 10*analysis[idx,7] + 100*analysis[idx,8] + 1000*analysis[idx,9]
-                    temp += 1 # 1 is an indicator to mean NOT FULL
+                    w_def_to_off = 1.1 # Weight of defensive play to offensive play
+                    w_def_to_off = weight
+                    
+                    weight1 = np.array([0,-1000,-100,-10,-1,0,1,10,100,1000], int)
+                    weight2 = np.r_[np.ones(5)*w_def_to_off, np.ones(5)*1.0]
+                    weight_final = weight1*weight2
+                    temp = 1 + int(np.round(np.dot(analysis[idx,:], weight_final)))
+
+#                    temp = -1000*analysis[idx,1] + -100*analysis[idx,2] + -10*analysis[idx,3] * -1*analysis[idx,4]
+#                    temp += 1*analysis[idx,6] + 10*analysis[idx,7] + 100*analysis[idx,8] + 1000*analysis[idx,9]
+#                    temp += 1 # 1 is an indicator to mean NOT FULL
                     
                     if np.sum(analysis[idx,:]) == 0: # If the column is FULL
                         objective[idx] = 0 # 0 = column is FULL, move not possible
@@ -520,6 +553,73 @@ def check_winner(matrix):
     return []
 
 
+#%% Find better weights
+
+improve_weights = True
+
+if improve_weights == True:
+    
+#    weight_1 = np.array([0.1,0.5,0.9,1,1.1,1.5,2])
+#    weight_2 = np.array([0.1,0.5,0.9,1,1.1,1.5,2])
+    
+    weight_1 = np.array([0.9, 1.0, 1.1])
+    weight_2 = np.array([0.9, 1.0, 1.1])
+    
+    record_winner = np.zeros(len(weight_1)*len(weight_2))
+    record_turns = np.zeros(len(record_winner))
+    idx = -1
+    
+    for i in range(len(weight_1)):
+        for j in range(len(weight_2)):
+            idx += 1
+            print(idx)
+        
+            # initialize the matrix
+            matrix = np.zeros((6, 7), int)
+            turns = 1
+            print('Starting Game:')
+            print('Turn ' + str(turns))
+            print(matrix)
+            winner = []
+            player_turn = 1 # np.random.randint(2)+1
+            
+            while (winner == []) and np.any(matrix == 0):
+                turns += 1
+                if player_turn == 1:
+                    chosen = good_ai(matrix, weight_1[i])              # Replace function name with your ai function name.
+        #            chosen = int(input('What column would you like to add to? '))
+                    matrix = addpiece(matrix, player_turn, chosen)
+                    print('\n----------- Turn ' + str(turns) + '-----------')
+                    print('Player Turn: Picked Column' + str(chosen))
+                    print(matrix)
+                    player_turn = 2
+                else:
+                    chosen = good_ai(matrix, weight_2[j]) # int(input('What column would you like to add to? '))
+                    matrix = addpiece(matrix, player_turn, chosen)
+                    print('\n----------- Turn ' + str(turns) + '-----------')
+                    print('Computer Turn: Picked Column' + str(chosen))
+                    print(matrix)
+                    player_turn = 1
+            
+                winner = check_winner(matrix)
+            
+            if winner == []:
+                print('\n*********************')
+                print('\nTie Game!')
+                print('*********************')
+                record_winner[idx] = 0
+                record_turns[idx] = turns
+                
+            else:
+#                print('\n*********************')
+#                print('Player ' + str(winner) + ' wins!')
+#                print('*********************')    
+#                print('\nTotal Number of Turns = ' + str(turns)+'\n')
+                record_winner[idx] = winner
+                record_turns[idx] = turns                
+#            print(matrix)
+    
+
 #%% Play the game
 
 if __name__ == "__main__":
@@ -536,8 +636,8 @@ if __name__ == "__main__":
     while (winner == []) and np.any(matrix == 0):
         turns += 1
         if player_turn == 1:
-    #        chosen = badai(matrix)              # Replace function name with your ai function name.
-            chosen = int(input('What column would you like to add to? '))
+            chosen = good_ai(matrix)              # Replace function name with your ai function name.
+#            chosen = int(input('What column would you like to add to? '))
             matrix = addpiece(matrix, player_turn, chosen)
             print('\n----------- Turn ' + str(turns) + '-----------')
             print('Player Turn: Picked Column' + str(chosen))
