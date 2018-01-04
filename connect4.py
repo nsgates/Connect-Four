@@ -10,15 +10,20 @@ import copy
 import time
 import pandas as pd
 import scipy as sp
+import random
 
 
-def badai(current_matrix):
+def bad_ai(current_matrix):
     # this will just return a random column to add a piece to.
     # your ai should return a integer between 0 and 6 (inclusive) for the game to add to the board
 
     # Add in detection of full columns and avoid going there
-
-    return np.random.randint(7)
+    columns_available = np.zeros(7, int)
+    for i in range(7):
+        columns_available[i] = np.sum(m[:,i] == 0)
+    valid_columns = np.where(columns_available)[0]
+    
+    return random.choice(valid_columns)
 
 def addpiece(current_matrix, player_number, column):
     # This code will add a piece to the column.
@@ -34,6 +39,71 @@ def addpiece(current_matrix, player_number, column):
     new_matrix = copy.copy(current_matrix)
     new_matrix[first[column]-1, column] = player_number
     return new_matrix
+
+
+
+#%% For testing
+
+# Start game
+# initialize the matrix
+m = np.zeros((6, 7), int)
+turns = 1
+player_turn = np.random.randint(2)+1
+
+# Define test ai
+def medium_ai(m): # m = current_matrix
+    # Assumes player 2 is me, player 1 is opponent (may have to change in the future)
+    
+    # Code for turns 1 and 2
+    if m[5,3] == 0:
+        c = 3 # c = column to place piece in
+    elif m[5,3] == 1 and m[4,3] == 0:
+        c = 3
+            
+    else:
+        # Code for turn 3+
+#        c = np.random.randint(7)
+        columns_available = np.zeros(7, int)
+        for i in range(7):
+            columns_available[i] = np.sum(m[:,i] == 0)
+        valid_columns = np.where(columns_available)[0]
+        c = random.choice(valid_columns)
+    
+    return c
+
+# Define function to compute one iteration of the game
+def iterate(matrix,turns,player_turn):
+    turns += 1
+    if player_turn == 1: # Player 1 is badai
+        chosen = good_ai(matrix)              # Replace function name with your ai function name.
+        matrix = addpiece(matrix, player_turn, chosen)
+        print('\n----------- Turn ' + str(turns) + '-----------')
+        print('Computer Turn: Picked Column ' + str(chosen))
+        print(matrix)
+        player_turn = 2
+    else: # Player 2 is goodai
+        chosen = good_ai(matrix) # int(input('What column would you like to add to? '))
+        matrix = addpiece(matrix, player_turn, chosen)
+        print('\n----------- Turn ' + str(turns) + '-----------')
+        print('Player Turn: Picked Column ' + str(chosen))
+        print(matrix)
+        player_turn = 1
+
+    winner = check_winner(matrix)
+    if winner == 1:
+        print('Winner!')
+    else:
+        return matrix, turns, player_turn
+
+
+
+#%% Iterate the game forward by running this several times
+m, turns, player_turn = iterate(m,turns,player_turn) 
+
+
+#%% Iterate move by move
+
+
 
 
 #%% 
@@ -148,14 +218,28 @@ def check_region(m):
 
     return region
 
+def valid_moves(m):
+    # Determine valid moves
+    columns_available = np.zeros(7, int)
+    for i in range(7):
+        columns_available[i] = np.sum(m[:,i] == 0)
+    return columns_available # Shows number of moves remaining
+#
+#    valid_columns = np.where(columns_available)[0]
+#    return valid_columns
 
 #%% Define good ai
 
-def goodai(m): # m = current_matrix
-    # Assumes player 2 is me, player 1 is opponent (may have to change in the future)
-    
+def good_ai(m): # m = current_matrix
+    # Assumes player 1 goes first, then player 2
+
     if np.sum(np.ravel(m) != 0) == 0: # i.e. you are going first
-        c = 3 # c = column to place piece in
+        # Always go in the middle center if you are going first
+        c = 3 # c = column to place piece in 
+        
+        # Swap 1's and 2's so 1 = opponent and 2 = player (ai)
+        m = 3 - m
+        m[m == 3] = 0
 
     # Code for turns 1 and 2
     elif m[5,3] == 0:
@@ -166,22 +250,28 @@ def goodai(m): # m = current_matrix
         c = 3
             
     else:
-        # Code for turn 3+
-#        c = np.random.randint(7)
+        ## Code for turn 3+
     
+        # Identify winning moves
+        
+
+        valid_columns = valid_moves(m)
+        valid_columns_2 = np.zeros([7,7])
+
         #######################################################################
         mode = 2 # Select 2 or 4 ——— 2 = two moves ahead, 4 = four moves ahead    
-        ####################################################################### 
+        #######################################################################        
         
         if mode == 2:
         
             ######## Region code #######   
         
-            region2 = np.zeros((7,7,69))
+            region2 = -999*np.ones((7,7,69), int) # -999 = invalid column
     #        region4 = np.zeros((7,7,7,7,69))
-            for i in range(7): # Look at 7 possible moves
+            for i in np.where(valid_columns)[0]: # Skip full columns (0)
                 mm = addpiece(m, 2, i) # Player 2 (me) goes in column i
-                for j in range(7):
+                valid_columns_2[i,:] = valid_moves(mm)
+                for j in np.where(valid_columns_2[i,:])[0]:
                     mmm = addpiece(mm, 1, j) # Player 1 (Opponent) goes in column j
                     region2[i,j,:] = check_region(mmm)
     #                for k in range(7):
@@ -193,9 +283,15 @@ def goodai(m): # m = current_matrix
     
             ######## Evaluate choice #######
     
+            # Identify winning move(s)
+            win_possible = np.sum(region2 == 4) != 0
+            lose_possible = np.sum(region2 == -4) != 0
+            np.where(region2 == -4) # Continue this code!!!!
+            ###### Need to finish this here ######
+    
             melt_r2 = np.zeros([49,3+69], int)
             analysis = np.zeros([49,10], int)
-            objective = np.zeros(49)
+            objective = np.zeros(49, int)
             idx = 0
             i = 0
             j = 0
@@ -216,28 +312,57 @@ def goodai(m): # m = current_matrix
                     analysis[idx,9] = sum(region2[i,j,:] == 4)        
             
                     # Experiment with these weightings - may be different depending on if you go first or not (more aggressive pays off if first)
-                    temp = -1200*analysis[idx,1] + -120*analysis[idx,2] + -12*analysis[idx,3] * -2*analysis[idx,4]
+                    temp = -1000*analysis[idx,1] + -100*analysis[idx,2] + -10*analysis[idx,3] * -1*analysis[idx,4]
                     temp += 1*analysis[idx,6] + 10*analysis[idx,7] + 100*analysis[idx,8] + 1000*analysis[idx,9]
-                    objective[idx] = temp 
+                    temp += 1 # 1 is an indicator to mean NOT FULL
+                    
+                    if np.sum(analysis[idx,:]) == 0: # If the column is FULL
+                        objective[idx] = 0 # 0 = column is FULL, move not possible
+                    else:
+                        objective[idx] = temp 
+                        
                     idx += 1
             
             obj_max = np.zeros(7, int)
             obj_min = np.zeros(7, int)
             obj_max_idx = np.zeros(7, int)
             obj_min_idx = np.zeros(7, int)
+            blocked = np.zeros(7)
             for i in range(7):
                 j=i*7
-                obj_max[i] = np.max(objective[j:j+7])
-                obj_min[i] = np.min(objective[j:j+7])
-                obj_max_idx[i] = sp.argmax(objective[j:j+7] == obj_max[i]) + j
-                obj_min_idx[i] = sp.argmax(objective[j:j+7] == obj_min[i]) + j
+                
+                # Determine if the whole subset it blocked
+                if np.sum(objective[j:j+7] == 0) == 7: # Whole column blocked
+                    blocked[i] = 1
+                    obj_max[i] = 0
+                    obj_min[i] = 0
+                    obj_max_idx[i] = -99
+                    obj_min_idx[i] = -99
+                else:
+                    # Compute the max and min objective values excluding individual blocked columns
+                    obj_max[i] = np.max(objective[j:j+7][objective[j:j+7] != 0])
+                    obj_min[i] = np.min(objective[j:j+7][objective[j:j+7] != 0])
+                    obj_max_idx[i] = sp.argmax(objective[j:j+7] == obj_max[i]) + j
+                    obj_min_idx[i] = sp.argmax(objective[j:j+7] == obj_min[i]) + j
+            
+            # Compute the mean of obj_max and obj_min and insert these values for
+            # the fully blocked columns, insuring they will never be the absolute
+            # max or  min (and thus will never get chosen).
+            mean_obj_max = int(np.round(np.mean(obj_max)))
+            mean_obj_min = int(np.round(np.mean(obj_min)))
+            for i in range(7):
+                if blocked[i] == 1:
+                    obj_max[i] = mean_obj_max
+                    obj_min[i] = mean_obj_min                   
+            
+            ##### Still need to check code below #####
             
             max_min = np.max(obj_min)
             max_min_idx = np.where(obj_min == max_min)[0]
             max_min_max = np.max(obj_max[max_min_idx])
             max_min_max_idx = np.where(obj_max[max_min_idx] == max_min_max)[0]
             
-            order = np.zeros(7,int)
+            order = np.zeros(7,int) # May not need to have more than 1 move option.
             order[0] = max_min_idx[max_min_max_idx][0]
             len_idx = len(np.where(obj_min == max_min))
             if len_idx > 1:
@@ -419,7 +544,7 @@ if __name__ == "__main__":
             print(matrix)
             player_turn = 2
         else:
-            chosen = goodai(matrix) # int(input('What column would you like to add to? '))
+            chosen = good_ai(matrix) # int(input('What column would you like to add to? '))
             matrix = addpiece(matrix, player_turn, chosen)
             print('\n----------- Turn ' + str(turns) + '-----------')
             print('Computer Turn: Picked Column' + str(chosen))
