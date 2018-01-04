@@ -415,14 +415,14 @@ if __name__ == "__main__":
             chosen = int(input('What column would you like to add to? '))
             matrix = addpiece(matrix, player_turn, chosen)
             print('\n----------- Turn ' + str(turns) + '-----------')
-            print('Computer Turn: Picked Column' + str(chosen))
+            print('Player Turn: Picked Column' + str(chosen))
             print(matrix)
             player_turn = 2
         else:
             chosen = goodai(matrix) # int(input('What column would you like to add to? '))
             matrix = addpiece(matrix, player_turn, chosen)
             print('\n----------- Turn ' + str(turns) + '-----------')
-            print('Player Turn: Picked Column' + str(chosen))
+            print('Computer Turn: Picked Column' + str(chosen))
             print(matrix)
             player_turn = 1
     
