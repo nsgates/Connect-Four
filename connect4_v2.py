@@ -245,16 +245,12 @@ def valid_moves(m):
 
 #%% Define good ai
 
-def good_ai(m): #, weight): # m = current_matrix
+def good_ai(m, weight): # m = current_matrix
     # Assumes player 1 goes first, then player 2
 
     valid_columns = valid_moves(m)
-    
-    weight = 0.9
 
     if np.sum(np.ravel(m) != 0) == 0: # i.e. you are going first
-        weight = 1.1
-
         # Always go in the middle center if you are going first
         c = 3 # c = column to place piece in 
         
@@ -647,16 +643,6 @@ if improve_weights == True:
 
 np.sum(record_time)
 np.average(record_time)
-
-idx = -1
-data = np.zeros([len(weight_1)*len(weight_2),3])
-for i in range(len(weight_1)):
-    for j in range(len(weight_2)):
-        idx += 1
-        data[idx,0] = weight_1[i]
-        data[idx,1] = weight_2[j]
-        data[idx,2] = record_winner[idx]
-
 
 #%% Play the game
 
